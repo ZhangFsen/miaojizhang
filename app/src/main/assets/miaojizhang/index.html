@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#111827" />
+  <title>秒记账</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icon.svg" />
+  <style>
+    :root{--bg:#0b1020;--card:#151c2f;--muted:#8e99ad;--text:#f8fafc;--line:#273149;--good:#34d399;--bad:#fb7185;--accent:#fbbf24}
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent} body{margin:0;background:linear-gradient(180deg,#090d18,#101827);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;min-height:100vh;padding:env(safe-area-inset-top) 16px env(safe-area-inset-bottom)}
+    .app{max-width:520px;margin:0 auto;padding:22px 0 28px}.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}.brand{font-size:24px;font-weight:800;letter-spacing:.5px}.privacy{font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:6px 10px}
+    .budget{background:radial-gradient(circle at top left,#243453,#12192a 62%);border:1px solid #2a3855;border-radius:28px;padding:20px;box-shadow:0 16px 40px rgba(0,0,0,.28);margin-bottom:16px}.budget-row{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}.label{color:var(--muted);font-size:13px}.remain{font-size:42px;font-weight:900;line-height:1;margin-top:8px}.spent{color:var(--muted);font-size:13px;text-align:right}.bar{height:10px;background:#26324b;border-radius:999px;overflow:hidden;margin-top:16px}.fill{height:100%;width:0%;background:linear-gradient(90deg,var(--good),var(--accent),var(--bad));border-radius:999px;transition:.25s}
+    .input-card,.list-card{background:rgba(21,28,47,.92);border:1px solid var(--line);border-radius:28px;padding:18px;margin-bottom:16px}.amount-wrap{display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--line);padding-bottom:12px}.yen{font-size:28px;color:var(--muted);font-weight:800}.amount{width:100%;background:transparent;color:var(--text);border:0;outline:0;font-size:46px;font-weight:900;line-height:1}.amount::placeholder{color:#3b465c}.cats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:16px}.cat{border:1px solid var(--line);background:#111827;color:var(--text);border-radius:18px;padding:12px 6px;font-size:13px;font-weight:700}.cat:active,.cat.selected{transform:scale(.98);border-color:#fbbf24}.actions{display:flex;gap:10px;margin-top:14px}.btn{flex:1;border:0;border-radius:18px;padding:15px 12px;font-size:16px;font-weight:850;color:#111827;background:var(--accent)}.btn.secondary{background:#26324b;color:var(--text)}
+    .section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}.section-title{font-weight:850}.small-btn{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:6px 10px}.item{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid var(--line)}.item:first-of-type{border-top:0}.item-main{display:flex;flex-direction:column;gap:4px}.item-cat{font-weight:800}.item-time{font-size:12px;color:var(--muted)}.item-amt{font-size:18px;font-weight:900}.empty{color:var(--muted);font-size:14px;text-align:center;padding:22px 0}.settings{display:flex;gap:10px;margin:16px 0}.settings input{min-width:0;flex:1;border:1px solid var(--line);background:#111827;color:var(--text);border-radius:16px;padding:12px 14px;font-size:16px;outline:0}.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:#f8fafc;color:#111827;border-radius:999px;padding:10px 16px;font-weight:800;opacity:0;transition:.2s;pointer-events:none}.toast.show{opacity:1;bottom:36px}@media(max-width:390px){.cats{grid-template-columns:repeat(3,1fr)}.remain{font-size:36px}.amount{font-size:42px}}
+  </style>
+</head>
+<body>
+  <main class="app">
+    <div class="top"><div class="brand">秒记账</div><div class="privacy">纯离线 · 不登录</div></div>
+    <section class="budget"><div class="budget-row"><div><div class="label">今天还能花</div><div class="remain" id="remain">¥0</div></div><div class="spent"><div>今日已花</div><strong id="todaySpent">¥0</strong><br/><span id="dailyBudgetText">预算 ¥100</span></div></div><div class="bar"><div class="fill" id="fill"></div></div></section>
+    <section class="input-card"><div class="amount-wrap"><span class="yen">¥</span><input id="amount" class="amount" inputmode="decimal" placeholder="0" autofocus /></div><div class="cats" id="cats"></div><div class="actions"><button class="btn" id="save">记一笔</button><button class="btn secondary" id="clear">清空</button></div><div class="settings"><input id="budgetInput" inputmode="decimal" placeholder="每日预算，如 100"/><button class="btn secondary" id="setBudget">设预算</button></div></section>
+    <section class="list-card"><div class="section-head"><div class="section-title">今天记录</div><button class="small-btn" id="exportBtn">导出</button></div><div id="list"></div></section>
+  </main><div id="toast" class="toast">已保存</div>
+  <script>
+    const CATS=['吃饭','交通','饮料','购物','娱乐','学习','房租','其他'];
+    const $=id=>document.getElementById(id); const today=()=>new Date().toISOString().slice(0,10);
+    const money=n=>'¥'+(Math.round(n*100)/100).toLocaleString('zh-CN');
+    let data=JSON.parse(localStorage.getItem('miao_records')||'[]'); let budget=Number(localStorage.getItem('miao_budget')||100); let currentCat=localStorage.getItem('miao_last_cat')||'吃饭';
+    function saveStore(){localStorage.setItem('miao_records',JSON.stringify(data));localStorage.setItem('miao_budget',budget)}
+    function showToast(t='已保存'){const el=$('toast');el.textContent=t;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),1100)}
+    function renderCats(){ $('cats').innerHTML=CATS.map(c=>`<button class="cat ${c===currentCat?'selected':''}" data-cat="${c}">${c}</button>`).join(''); document.querySelectorAll('.cat').forEach(b=>b.onclick=()=>{currentCat=b.dataset.cat;localStorage.setItem('miao_last_cat',currentCat);renderCats()}) }
+    function todayItems(){return data.filter(x=>x.date===today()).sort((a,b)=>b.ts-a.ts)}
+    function render(){ const items=todayItems(); const spent=items.reduce((s,x)=>s+x.amount,0); const remain=Math.max(0,budget-spent); $('remain').textContent=money(remain); $('todaySpent').textContent=money(spent); $('dailyBudgetText').textContent='预算 '+money(budget); $('fill').style.width=Math.min(100, budget?spent/budget*100:0)+'%'; $('budgetInput').value=budget||''; $('list').innerHTML=items.length?items.map(x=>`<div class="item"><div class="item-main"><div class="item-cat">${x.cat}</div><div class="item-time">${new Date(x.ts).toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'})}</div></div><div class="item-amt">-${money(x.amount)}</div></div>`).join(''):'<div class="empty">还没有记录。输入金额，点分类，秒记一笔。</div>'; }
+    $('save').onclick=()=>{const n=Number(String($('amount').value).replace(',','.')); if(!n||n<=0){showToast('先输入金额');return} data.push({amount:n,cat:currentCat,date:today(),ts:Date.now()}); $('amount').value=''; saveStore(); render(); $('amount').focus(); showToast('已记一笔')};
+    $('clear').onclick=()=>{$('amount').value='';$('amount').focus()}; $('setBudget').onclick=()=>{const n=Number($('budgetInput').value); if(!n||n<0){showToast('预算不对');return} budget=n; saveStore(); render(); showToast('预算已更新')};
+    $('exportBtn').onclick=()=>{const rows=['date,time,category,amount'].concat(data.map(x=>`${x.date},${new Date(x.ts).toLocaleTimeString('zh-CN')},${x.cat},${x.amount}`)); const blob=new Blob([rows.join('\n')],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='miaojizhang.csv'; a.click(); URL.revokeObjectURL(a.href)};
+    if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js')}
+    renderCats(); render();
+  </script>
+</body>
+</html>
